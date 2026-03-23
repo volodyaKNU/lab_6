@@ -8,6 +8,11 @@ import '@testing-library/jest-dom/extend-expect';
 window.matchMedia = window.matchMedia || function() {
   return {
       matches: false,
+      media: '',
+      onchange: null,
+      addEventListener: function() {},
+      removeEventListener: function() {},
+      dispatchEvent: function() { return false; },
       addListener: function() {},
       removeListener: function() {}
   };

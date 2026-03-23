@@ -1,0 +1,52 @@
+{
+  "items": [
+    {
+      "id": "lap-1",
+      "name": "SwiftBook Air 14",
+      "category": "laptops",
+      "price": 45999,
+      "description": "Ноутбук для навчання та офісної роботи",
+      "stock": 8
+    },
+    {
+      "id": "lap-2",
+      "name": "DevStation Pro 16",
+      "category": "laptops",
+      "price": 72999,
+      "description": "Потужний ноутбук для розробки та дизайну",
+      "stock": 5
+    },
+    {
+      "id": "phone-1",
+      "name": "Photon S",
+      "category": "smartphones",
+      "price": 21999,
+      "description": "Смартфон з AMOLED-дисплеєм і 5G",
+      "stock": 15
+    },
+    {
+      "id": "phone-2",
+      "name": "Photon S Pro",
+      "category": "smartphones",
+      "price": 29999,
+      "description": "Флагманський смартфон з камерою 108MP",
+      "stock": 9
+    },
+    {
+      "id": "acc-1",
+      "name": "PowerDock 65W",
+      "category": "accessories",
+      "price": 1999,
+      "description": "Універсальний адаптер швидкої зарядки",
+      "stock": 45
+    },
+    {
+      "id": "acc-2",
+      "name": "MagCase Ultra",
+      "category": "accessories",
+      "price": 999,
+      "description": "Захисний чохол з магнітною фіксацією",
+      "stock": 60
+    }
+  ]
+}

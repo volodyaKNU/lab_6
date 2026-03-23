@@ -1,0 +1,24 @@
+.page-wrap {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.catalog-list {
+  border: 1px solid var(--ion-color-step-150, #d9d9d9);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.meta-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.loading-block {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px;
+}
