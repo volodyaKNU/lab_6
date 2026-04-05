@@ -1,4 +1,4 @@
-import {
+﻿import {
   IonBadge,
   IonButton,
   IonButtons,
@@ -21,6 +21,9 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { useEffect, useMemo, useState } from 'react';
+import AddProductComponent from '../components/AddProductComponent';
+import ProductsEditorComponent from '../components/ProductsEditorComponent';
+import { wearableExtensionItems } from '../data/wearableExtension';
 import { AccessoryAction } from '../domain/actions/AccessoryAction';
 import { LaptopAction } from '../domain/actions/LaptopAction';
 import { SmartphoneAction } from '../domain/actions/SmartphoneAction';
@@ -30,12 +33,12 @@ import { ElectronicsItemFactory } from '../domain/factories/ElectronicsItemFacto
 import { ItemFactoryRegistry } from '../domain/factories/ItemFactoryRegistry';
 import { WearableItemFactory } from '../domain/factories/WearableItemFactory';
 import type { CatalogItem } from '../domain/models/CatalogItem';
+import type { RawCatalogItem } from '../domain/models/RawCatalogItem';
 import { InMemoryCatalogRepository } from '../domain/repositories/InMemoryCatalogRepository';
 import { CatalogService } from '../domain/services/CatalogService';
 import { CheckoutService } from '../domain/services/CheckoutService';
 import { CloudJsonCatalogSource } from '../domain/services/CloudJsonCatalogSource';
 import { ItemActionService } from '../domain/services/ItemActionService';
-import { wearableExtensionItems } from '../data/wearableExtension';
 import './Home.css';
 
 const Home: React.FC = () => {
@@ -69,14 +72,18 @@ const Home: React.FC = () => {
   );
   const total = checkoutService.calculateTotal(selectedItems);
 
+  const syncItemsFromCatalog = (): void => {
+    setItems(catalogService.getItems());
+  };
+
   const loadCatalog = async (): Promise<void> => {
     try {
       setLoading(true);
       setError('');
       await catalogService.loadCatalog();
-      setItems(catalogService.getItems());
+      syncItemsFromCatalog();
     } catch (catalogError) {
-      const message = catalogError instanceof Error ? catalogError.message : 'Невідома помилка';
+      const message = catalogError instanceof Error ? catalogError.message : 'Unknown loading error';
       setError(message);
     } finally {
       setLoading(false);
@@ -92,14 +99,48 @@ const Home: React.FC = () => {
       return;
     }
 
+    const updatedItem = {
+      ...item,
+      stock: Math.max(item.stock - 1, 0),
+    };
+
+    catalogService.updateItem(updatedItem);
+    syncItemsFromCatalog();
     setSelectedItems((current) => [...current, item]);
-    setItems((current) =>
-      current.map((candidate) =>
-        candidate.id === item.id
-          ? { ...candidate, stock: Math.max(candidate.stock - 1, 0) }
-          : candidate,
-      ),
+  };
+
+  const handleAddProduct = (rawItem: RawCatalogItem): void => {
+    if (rawItem.category === 'wearables' && !wearableEnabled) {
+      catalogService.registerFactory(new WearableItemFactory());
+      actionService.registerAction(new WearableAction());
+      setWearableEnabled(true);
+    }
+
+    const createdItem = catalogService.addItem(rawItem);
+    syncItemsFromCatalog();
+    setSelectedItems((current) =>
+      current.map((item) => (item.id === createdItem.id ? createdItem : item)),
     );
+  };
+
+  const handleUpdateProduct = (rawItem: RawCatalogItem): void => {
+    if (rawItem.category === 'wearables' && !wearableEnabled) {
+      catalogService.registerFactory(new WearableItemFactory());
+      actionService.registerAction(new WearableAction());
+      setWearableEnabled(true);
+    }
+
+    const updatedItem = catalogService.addItem(rawItem);
+    syncItemsFromCatalog();
+    setSelectedItems((current) =>
+      current.map((item) => (item.id === updatedItem.id ? updatedItem : item)),
+    );
+  };
+
+  const handleDeleteProduct = (id: string): void => {
+    catalogService.removeItem(id);
+    syncItemsFromCatalog();
+    setSelectedItems((current) => current.filter((item) => item.id !== id));
   };
 
   const enableWearableExtension = (): void => {
@@ -110,7 +151,7 @@ const Home: React.FC = () => {
     catalogService.registerFactory(new WearableItemFactory());
     actionService.registerAction(new WearableAction());
     catalogService.addItems(wearableExtensionItems);
-    setItems(catalogService.getItems());
+    syncItemsFromCatalog();
     setWearableEnabled(true);
   };
 
@@ -118,9 +159,9 @@ const Home: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Lab 6: SOLID + Ionic</IonTitle>
+          <IonTitle>Lab 7: Dynamic Forms and Component Data Flow</IonTitle>
           <IonButtons slot="end">
-            <IonButton onClick={() => void loadCatalog()}>Оновити</IonButton>
+            <IonButton onClick={() => void loadCatalog()}>Reload</IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
@@ -128,14 +169,15 @@ const Home: React.FC = () => {
         <div className="page-wrap">
           <IonCard>
             <IonCardHeader>
-              <IonCardTitle>Магазин електроніки</IonCardTitle>
+              <IonCardTitle>Electronics Store</IonCardTitle>
               <IonCardSubtitle>
-                Категорії: ноутбуки, смартфони, аксесуари
+                Dynamic react-hook-form + add/edit/delete products + validation services
               </IonCardSubtitle>
             </IonCardHeader>
             <IonCardContent>
               <IonText>
-                Демонстрація SOLID: інтерфейси, сервіси, фабрики і розширення новим типом товару.
+                The app keeps SOLID architecture and now includes dynamic form fields,
+                component-to-component data transfer, and unit-tested validation helpers.
               </IonText>
             </IonCardContent>
           </IonCard>
@@ -147,9 +189,16 @@ const Home: React.FC = () => {
             color={wearableEnabled ? 'success' : 'primary'}
           >
             {wearableEnabled
-              ? 'Розширення Wearables підключено'
-              : 'Додати нову категорію: Wearables (OCP)'}
+              ? 'Wearables extension is enabled'
+              : 'Enable Wearables category (OCP extension)'}
           </IonButton>
+
+          <AddProductComponent onAdd={handleAddProduct} />
+          <ProductsEditorComponent
+            items={items}
+            onUpdate={handleUpdateProduct}
+            onDelete={handleDeleteProduct}
+          />
 
           {loading && (
             <div className="loading-block">
@@ -166,7 +215,7 @@ const Home: React.FC = () => {
                 onIonChange={(event) => setSelectedCategory(String(event.detail.value ?? 'all'))}
               >
                 <IonSegmentButton value="all">
-                  <IonLabel>Усі</IonLabel>
+                  <IonLabel>All</IonLabel>
                 </IonSegmentButton>
                 {categories.map((category) => (
                   <IonSegmentButton key={category} value={category}>
@@ -185,16 +234,27 @@ const Home: React.FC = () => {
                       <div className="meta-row">
                         <IonBadge color="medium">{item.category}</IonBadge>
                         <IonBadge color={item.stock > 0 ? 'success' : 'danger'}>
-                          В наявності: {item.stock}
+                          In stock: {item.stock}
                         </IonBadge>
+                        {item.metadata?.manufacturedAt && (
+                          <IonBadge color="tertiary">Date: {item.metadata.manufacturedAt}</IonBadge>
+                        )}
+                        {item.metadata?.warrantyMonths && (
+                          <IonBadge color="warning">
+                            Warranty: {item.metadata.warrantyMonths} months
+                          </IonBadge>
+                        )}
                       </div>
+                      {item.metadata?.highlights && item.metadata.highlights.length > 0 && (
+                        <p>Highlights: {item.metadata.highlights.join(', ')}</p>
+                      )}
                     </IonLabel>
                     <IonButton
                       slot="end"
                       onClick={() => addToSelection(item)}
                       disabled={item.stock <= 0}
                     >
-                      {item.stock > 0 ? '+ До списку' : 'Немає в наявності'}
+                      {item.stock > 0 ? '+ Add to cart' : 'Out of stock'}
                     </IonButton>
                   </IonItem>
                 ))}
@@ -204,11 +264,11 @@ const Home: React.FC = () => {
 
           <IonCard>
             <IonCardHeader>
-              <IonCardTitle>Сформований список</IonCardTitle>
-              <IonCardSubtitle>Позицій: {selectedItems.length}</IonCardSubtitle>
+              <IonCardTitle>Selection</IonCardTitle>
+              <IonCardSubtitle>Items: {selectedItems.length}</IonCardSubtitle>
             </IonCardHeader>
             <IonCardContent>
-              {selectedItems.length === 0 && <IonText>Список поки порожній.</IonText>}
+              {selectedItems.length === 0 && <IonText>The list is empty.</IonText>}
               {selectedItems.length > 0 && (
                 <IonList>
                   {selectedItems.map((item, index) => (
@@ -217,12 +277,12 @@ const Home: React.FC = () => {
                         {item.name}
                         <p>{item.category}</p>
                       </IonLabel>
-                      <IonBadge color="primary">{item.price} грн</IonBadge>
+                      <IonBadge color="primary">{item.price} UAH</IonBadge>
                     </IonItem>
                   ))}
                 </IonList>
               )}
-              <h3>Сума: {total} грн</h3>
+              <h3>Total: {total} UAH</h3>
             </IonCardContent>
           </IonCard>
         </div>

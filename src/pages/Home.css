@@ -22,3 +22,52 @@
   align-items: center;
   min-height: 80px;
 }
+
+.product-form {
+  display: grid;
+  gap: 10px;
+}
+
+.form-label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.form-label input,
+.form-label select,
+.form-label textarea,
+.highlight-row input {
+  border: 1px solid var(--ion-color-step-250, #cfcfcf);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  font: inherit;
+  background: #fff;
+  color: #111;
+}
+
+.highlights-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.highlight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-content {
+  padding: 16px;
+  overflow: auto;
+  height: 100%;
+}

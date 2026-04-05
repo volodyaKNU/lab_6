@@ -21,4 +21,14 @@ export class InMemoryCatalogRepository implements ResourceRepository<CatalogItem
 
     this.items = Array.from(mapById.values());
   }
+
+  upsert(item: CatalogItem): void {
+    const mapById = new Map(this.items.map((candidate) => [candidate.id, candidate]));
+    mapById.set(item.id, item);
+    this.items = Array.from(mapById.values());
+  }
+
+  removeById(id: string): void {
+    this.items = this.items.filter((item) => item.id !== id);
+  }
 }

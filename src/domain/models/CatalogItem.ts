@@ -1,3 +1,5 @@
+import type { ProductMetadata } from './ProductMetadata';
+
 export interface CatalogItem {
   id: string;
   name: string;
@@ -5,4 +7,5 @@ export interface CatalogItem {
   price: number;
   description: string;
   stock: number;
+  metadata?: ProductMetadata;
 }

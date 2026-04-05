@@ -29,6 +29,26 @@ export class CatalogService {
     return mappedItems;
   }
 
+  addItem(rawItem: RawCatalogItem): CatalogItem {
+    const [mappedItem] = this.factoryRegistry.createItems([rawItem]);
+
+    if (!mappedItem) {
+      throw new Error(`Unsupported category: ${rawItem.category}`);
+    }
+
+    this.repository.upsert(mappedItem);
+    return mappedItem;
+  }
+
+  updateItem(item: CatalogItem): CatalogItem {
+    this.repository.upsert(item);
+    return item;
+  }
+
+  removeItem(id: string): void {
+    this.repository.removeById(id);
+  }
+
   getItems(): CatalogItem[] {
     return this.repository.getAll();
   }

@@ -38,4 +38,29 @@ describe('CatalogService', () => {
     expect(service.getItems()).toHaveLength(3);
     expect(service.getCategories()).toContain('Wearables');
   });
+
+  it('supports add, update and remove operations for single item', async () => {
+    const service = new CatalogService(
+      new FakeCatalogSource([]),
+      new InMemoryCatalogRepository(),
+      new ItemFactoryRegistry([new ElectronicsItemFactory()]),
+    );
+
+    const added = service.addItem({
+      id: 'lap-9',
+      name: 'CreatorBook',
+      category: 'laptops',
+      price: 3500,
+      stock: 4,
+    });
+
+    expect(added.category).toBe('Laptops');
+
+    const updated = service.updateItem({ ...added, stock: 2 });
+    expect(updated.stock).toBe(2);
+    expect(service.getItems()).toHaveLength(1);
+
+    service.removeItem('lap-9');
+    expect(service.getItems()).toHaveLength(0);
+  });
 });
