@@ -27,6 +27,7 @@ import { wearableExtensionItems } from '../data/wearableExtension';
 import { AccessoryAction } from '../domain/actions/AccessoryAction';
 import { LaptopAction } from '../domain/actions/LaptopAction';
 import { SmartphoneAction } from '../domain/actions/SmartphoneAction';
+import { TabletAction } from '../domain/actions/TabletAction';
 import { WearableAction } from '../domain/actions/WearableAction';
 import { NoDiscountPolicy } from '../domain/discounts/NoDiscountPolicy';
 import { ElectronicsItemFactory } from '../domain/factories/ElectronicsItemFactory';
@@ -36,6 +37,7 @@ import type { CatalogItem } from '../domain/models/CatalogItem';
 import type { RawCatalogItem } from '../domain/models/RawCatalogItem';
 import { InMemoryCatalogRepository } from '../domain/repositories/InMemoryCatalogRepository';
 import { CatalogService } from '../domain/services/CatalogService';
+import { CategoryFilterService } from '../domain/services/CategoryFilterService';
 import { CheckoutService } from '../domain/services/CheckoutService';
 import { CloudJsonCatalogSource } from '../domain/services/CloudJsonCatalogSource';
 import { ItemActionService } from '../domain/services/ItemActionService';
@@ -43,7 +45,9 @@ import './Home.css';
 
 const Home: React.FC = () => {
   const [items, setItems] = useState<CatalogItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [visibleItems, setVisibleItems] = useState<CatalogItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -60,20 +64,24 @@ const Home: React.FC = () => {
     [source, repository, factoryRegistry],
   );
   const actionService = useMemo(
-    () => new ItemActionService([new SmartphoneAction(), new LaptopAction(), new AccessoryAction()]),
+    () =>
+      new ItemActionService([
+        new SmartphoneAction(),
+        new LaptopAction(),
+        new AccessoryAction(),
+        new TabletAction(),
+      ]),
     [],
   );
   const checkoutService = useMemo(() => new CheckoutService(new NoDiscountPolicy()), []);
+  const categoryFilterService = useMemo(() => new CategoryFilterService(), []);
 
-  const categories = useMemo(() => catalogService.getCategories(), [items, catalogService]);
-  const visibleItems = useMemo(
-    () => (selectedCategory === 'all' ? items : items.filter((item) => item.category === selectedCategory)),
-    [items, selectedCategory],
-  );
   const total = checkoutService.calculateTotal(selectedItems);
 
   const syncItemsFromCatalog = (): void => {
-    setItems(catalogService.getItems());
+    const catalogItems = catalogService.getItems();
+    setItems(catalogItems);
+    categoryFilterService.setItems(catalogItems);
   };
 
   const loadCatalog = async (): Promise<void> => {
@@ -93,6 +101,20 @@ const Home: React.FC = () => {
   useEffect(() => {
     void loadCatalog();
   }, []);
+
+  useEffect(() => {
+    const categoriesSubscription = categoryFilterService.categories$.subscribe(setCategories);
+    const selectedCategorySubscription = categoryFilterService.selectedCategory$.subscribe((category) => {
+      setSelectedCategory(category ?? '');
+    });
+    const visibleItemsSubscription = categoryFilterService.visibleItems$.subscribe(setVisibleItems);
+
+    return () => {
+      categoriesSubscription.unsubscribe();
+      selectedCategorySubscription.unsubscribe();
+      visibleItemsSubscription.unsubscribe();
+    };
+  }, [categoryFilterService]);
 
   const addToSelection = (item: CatalogItem): void => {
     if (item.stock <= 0) {
@@ -159,7 +181,7 @@ const Home: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Lab 7: Dynamic Forms and Component Data Flow</IonTitle>
+          <IonTitle>Lab 8: RxJS Category Filtering</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={() => void loadCatalog()}>Reload</IonButton>
           </IonButtons>
@@ -171,13 +193,13 @@ const Home: React.FC = () => {
             <IonCardHeader>
               <IonCardTitle>Electronics Store</IonCardTitle>
               <IonCardSubtitle>
-                Dynamic react-hook-form + add/edit/delete products + validation services
+                RxJS BehaviorSubject filtering + dynamic forms + add/edit/delete products
               </IonCardSubtitle>
             </IonCardHeader>
             <IonCardContent>
               <IonText>
-                The app keeps SOLID architecture and now includes dynamic form fields,
-                component-to-component data transfer, and unit-tested validation helpers.
+                The app now tracks active category through RxJS and displays items
+                from one selected category only.
               </IonText>
             </IonCardContent>
           </IonCard>
@@ -212,17 +234,17 @@ const Home: React.FC = () => {
             <>
               <IonSegment
                 value={selectedCategory}
-                onIonChange={(event) => setSelectedCategory(String(event.detail.value ?? 'all'))}
+                onIonChange={(event) =>
+                  categoryFilterService.setCategory(String(event.detail.value ?? ''))
+                }
               >
-                <IonSegmentButton value="all">
-                  <IonLabel>All</IonLabel>
-                </IonSegmentButton>
                 {categories.map((category) => (
                   <IonSegmentButton key={category} value={category}>
                     <IonLabel>{category}</IonLabel>
                   </IonSegmentButton>
                 ))}
               </IonSegment>
+              {categories.length === 0 && <IonText>No categories are available.</IonText>}
 
               <IonList className="catalog-list">
                 {visibleItems.map((item) => (
@@ -259,6 +281,9 @@ const Home: React.FC = () => {
                   </IonItem>
                 ))}
               </IonList>
+              {visibleItems.length === 0 && categories.length > 0 && (
+                <IonText>No products found in selected category.</IonText>
+              )}
             </>
           )}
 

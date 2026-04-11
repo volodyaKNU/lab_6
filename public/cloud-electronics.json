@@ -1,11 +1,11 @@
-{
+﻿{
   "items": [
     {
       "id": "lap-1",
       "name": "SwiftBook Air 14",
       "category": "laptops",
       "price": 45999,
-      "description": "Ноутбук для навчання та офісної роботи",
+      "description": "Laptop for learning and office work",
       "stock": 8
     },
     {
@@ -13,7 +13,7 @@
       "name": "DevStation Pro 16",
       "category": "laptops",
       "price": 72999,
-      "description": "Потужний ноутбук для розробки та дизайну",
+      "description": "High-performance laptop for development and design",
       "stock": 5
     },
     {
@@ -21,7 +21,7 @@
       "name": "Photon S",
       "category": "smartphones",
       "price": 21999,
-      "description": "Смартфон з AMOLED-дисплеєм і 5G",
+      "description": "Smartphone with AMOLED display and 5G",
       "stock": 15
     },
     {
@@ -29,15 +29,31 @@
       "name": "Photon S Pro",
       "category": "smartphones",
       "price": 29999,
-      "description": "Флагманський смартфон з камерою 108MP",
+      "description": "Flagship smartphone with 108MP camera",
       "stock": 9
+    },
+    {
+      "id": "tab-1",
+      "name": "SketchTab 11",
+      "category": "tablets",
+      "price": 17999,
+      "description": "Tablet for study and note-taking",
+      "stock": 14
+    },
+    {
+      "id": "tab-2",
+      "name": "SketchTab Pro 13",
+      "category": "tablets",
+      "price": 27999,
+      "description": "Tablet for designers with pen support",
+      "stock": 7
     },
     {
       "id": "acc-1",
       "name": "PowerDock 65W",
       "category": "accessories",
       "price": 1999,
-      "description": "Універсальний адаптер швидкої зарядки",
+      "description": "Universal fast charging adapter",
       "stock": 45
     },
     {
@@ -45,7 +61,7 @@
       "name": "MagCase Ultra",
       "category": "accessories",
       "price": 999,
-      "description": "Захисний чохол з магнітною фіксацією",
+      "description": "Protective case with magnetic mount",
       "stock": 60
     }
   ]

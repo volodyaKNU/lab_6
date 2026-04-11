@@ -1,4 +1,4 @@
-import { IonButton, IonText } from '@ionic/react';
+﻿import { IonButton, IonText } from '@ionic/react';
 import { useEffect, useMemo } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import {
@@ -30,8 +30,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
   onSubmit,
   onCancel,
 }) => {
-  const manufactureDateValidationService = useMemo(() => new ManufactureDateValidationService(), []);
-  const warrantyValidationService = useMemo(() => new WarrantyTermValidationService(), []);
+  const manufactureDateValidationService = useMemo(
+    () => new ManufactureDateValidationService(),
+    [],
+  );
+  const warrantyValidationService = useMemo(
+    () => new WarrantyTermValidationService(),
+    [],
+  );
   const manufactureDateValidator = useMemo(
     () => createManufactureDateValidator(manufactureDateValidationService),
     [manufactureDateValidationService],
@@ -127,7 +133,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           {...register('price', {
             required: 'Price is required',
             valueAsNumber: true,
-            min: { value: 1, message: 'Price must be greater than 0' },
+            min: { value: 100, message: 'Price must be greater than 100' },
           })}
         />
       </label>
@@ -142,7 +148,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           {...register('stock', {
             required: 'Stock is required',
             valueAsNumber: true,
-            min: { value: 0, message: 'Stock cannot be negative' },
+            min: { value: 200, message: 'must be greater then 200' },
           })}
         />
       </label>
@@ -185,7 +191,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
               step={1}
               {...register('warrantyMonths', {
                 valueAsNumber: true,
-                validate: createWarrantyTermValidator(warrantyValidationService, true),
+                validate: createWarrantyTermValidator(
+                  warrantyValidationService,
+                  true,
+                ),
               })}
             />
           </label>

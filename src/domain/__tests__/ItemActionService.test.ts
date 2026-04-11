@@ -2,6 +2,7 @@
 import { AccessoryAction } from '../actions/AccessoryAction';
 import { LaptopAction } from '../actions/LaptopAction';
 import { SmartphoneAction } from '../actions/SmartphoneAction';
+import { TabletAction } from '../actions/TabletAction';
 import { WearableAction } from '../actions/WearableAction';
 import type { CatalogItem } from '../models/CatalogItem';
 import { ItemActionService } from '../services/ItemActionService';
@@ -21,6 +22,7 @@ describe('ItemActionService', () => {
       new SmartphoneAction(),
       new LaptopAction(),
       new AccessoryAction(),
+      new TabletAction(),
     ]);
 
     const laptopMessage = service.getActionMessage(laptop);
@@ -37,5 +39,16 @@ describe('ItemActionService', () => {
     });
 
     expect(wearableMessage).toContain('Watch');
+
+    const tabletMessage = service.getActionMessage({
+      id: 't1',
+      name: 'SketchTab',
+      category: 'Tablets',
+      price: 500,
+      description: 'x',
+      stock: 3,
+    });
+
+    expect(tabletMessage).toContain('SketchTab');
   });
 });

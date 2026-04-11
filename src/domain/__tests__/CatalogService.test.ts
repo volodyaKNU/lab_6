@@ -31,6 +31,7 @@ describe('CatalogService', () => {
     const items = await service.loadCatalog();
     expect(items).toHaveLength(2);
     expect(service.getCategories()).toEqual(['Laptops', 'Smartphones']);
+    expect(service.getItemsByCategory('Laptops')).toHaveLength(1);
 
     service.registerFactory(new WearableItemFactory());
     service.addItems([{ id: 'w1', name: 'Watch', category: 'wearables', price: 700, stock: 11 }]);

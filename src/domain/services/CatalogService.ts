@@ -53,6 +53,10 @@ export class CatalogService {
     return this.repository.getAll();
   }
 
+  getItemsByCategory(category: string): CatalogItem[] {
+    return this.repository.getAll().filter((item) => item.category === category);
+  }
+
   getCategories(): string[] {
     return Array.from(new Set(this.repository.getAll().map((item) => item.category))).sort();
   }

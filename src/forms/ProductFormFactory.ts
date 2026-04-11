@@ -1,7 +1,7 @@
-import type { CatalogItem } from '../domain/models/CatalogItem';
+﻿import type { CatalogItem } from '../domain/models/CatalogItem';
 import type { RawCatalogItem } from '../domain/models/RawCatalogItem';
 
-export const PRODUCT_CATEGORIES = ['laptops', 'smartphones', 'accessories', 'wearables'] as const;
+export const PRODUCT_CATEGORIES = ['laptops', 'smartphones', 'accessories', 'tablets', 'wearables'] as const;
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
 export interface ProductFormValues {

@@ -3,7 +3,7 @@ import type { CatalogItem } from '../models/CatalogItem';
 import type { ProductMetadata } from '../models/ProductMetadata';
 import type { RawCatalogItem } from '../models/RawCatalogItem';
 
-const SUPPORTED_CATEGORIES = new Set(['laptops', 'smartphones', 'accessories']);
+const SUPPORTED_CATEGORIES = new Set(['laptops', 'smartphones', 'accessories', 'tablets']);
 
 export class ElectronicsItemFactory implements ItemFactory {
   supports(raw: RawCatalogItem): boolean {
