@@ -5,7 +5,7 @@ import { ProductFormFactory } from '../forms/ProductFormFactory';
 import ProductForm from './ProductForm';
 
 interface AddProductComponentProps {
-  onAdd: (item: RawCatalogItem) => void;
+  onAdd: (item: RawCatalogItem) => Promise<void> | void;
 }
 
 const AddProductComponent: React.FC<AddProductComponentProps> = ({ onAdd }) => {
@@ -13,10 +13,10 @@ const AddProductComponent: React.FC<AddProductComponentProps> = ({ onAdd }) => {
   const [error, setError] = useState<string>('');
   const formFactory = useMemo(() => new ProductFormFactory(), []);
 
-  const submitProduct = (values: ReturnType<ProductFormFactory['createEmpty']>): void => {
+  const submitProduct = async (values: ReturnType<ProductFormFactory['createEmpty']>): Promise<void> => {
     try {
       const rawItem = formFactory.toRawItem(values);
-      onAdd(rawItem);
+      await onAdd(rawItem);
       setError('');
       setVersion((current) => current + 1);
     } catch (submissionError) {

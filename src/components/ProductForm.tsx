@@ -1,24 +1,24 @@
-﻿import { IonButton, IonText } from '@ionic/react';
-import { useEffect, useMemo } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+﻿import { IonButton, IonText } from "@ionic/react";
+import { useEffect, useMemo } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
 import {
   categoryRequiresWarranty,
   PRODUCT_CATEGORIES,
   type ProductFormValues,
-} from '../forms/ProductFormFactory';
+} from "../forms/ProductFormFactory";
 import {
   createManufactureDateValidator,
   createWarrantyTermValidator,
-} from '../validation/productValidators';
-import { ManufactureDateValidationService } from '../validation/services/ManufactureDateValidationService';
-import { WarrantyTermValidationService } from '../validation/services/WarrantyTermValidationService';
+} from "../validation/productValidators";
+import { ManufactureDateValidationService } from "../validation/services/ManufactureDateValidationService";
+import { WarrantyTermValidationService } from "../validation/services/WarrantyTermValidationService";
 
 interface ProductFormProps {
   title: string;
   submitLabel: string;
   initialValues: ProductFormValues;
   disableId?: boolean;
-  onSubmit: (values: ProductFormValues) => void;
+  onSubmit: (values: ProductFormValues) => Promise<void> | void;
   onCancel?: () => void;
 }
 
@@ -54,29 +54,31 @@ const ProductForm: React.FC<ProductFormProps> = ({
     formState: { errors, isValid },
   } = useForm<ProductFormValues>({
     defaultValues: initialValues,
-    mode: 'onChange',
+    mode: "onChange",
   });
 
   const { fields, append, remove } = useFieldArray({
     control,
-    name: 'highlights',
+    name: "highlights",
   });
 
   useEffect(() => {
     reset(initialValues);
   }, [initialValues, reset]);
 
-  const selectedCategory = watch('category');
+  const selectedCategory = watch("category");
   const requiresWarranty = categoryRequiresWarranty(selectedCategory);
 
   useEffect(() => {
     if (!requiresWarranty) {
-      setValue('warrantyMonths', undefined);
-      clearErrors('warrantyMonths');
+      setValue("warrantyMonths", undefined);
+      clearErrors("warrantyMonths");
     }
   }, [clearErrors, requiresWarranty, setValue]);
 
-  const submitHandler = handleSubmit((values) => onSubmit(values));
+  const submitHandler = handleSubmit(async (values) => {
+    await onSubmit(values);
+  });
 
   return (
     <form className="product-form" onSubmit={submitHandler}>
@@ -87,11 +89,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
         <input
           type="text"
           disabled={disableId}
-          {...register('id', {
-            required: 'Product id is required',
+          {...register("id", {
+            required: "Product id is required",
             pattern: {
               value: /^[a-z0-9-]+$/i,
-              message: 'Use letters, digits and hyphens only',
+              message: "Use letters, digits and hyphens only",
             },
           })}
         />
@@ -102,11 +104,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
         Name
         <input
           type="text"
-          {...register('name', {
-            required: 'Name is required',
+          {...register("name", {
+            required: "Name is required",
             minLength: {
               value: 2,
-              message: 'At least 2 characters are required',
+              message: "At least 2 characters are required",
             },
           })}
         />
@@ -115,7 +117,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
       <label className="form-label">
         Category
-        <select {...register('category', { required: true })}>
+        <select {...register("category", { required: true })}>
           {PRODUCT_CATEGORIES.map((category) => (
             <option key={category} value={category}>
               {category}
@@ -130,10 +132,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
           type="number"
           min={1}
           step={1}
-          {...register('price', {
-            required: 'Price is required',
+          {...register("price", {
+            required: "Price is required",
             valueAsNumber: true,
-            min: { value: 100, message: 'Price must be greater than 100' },
+            min: { value: 100, message: "Price must be greater than 100" },
           })}
         />
       </label>
@@ -145,10 +147,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
           type="number"
           min={0}
           step={1}
-          {...register('stock', {
-            required: 'Stock is required',
+          {...register("stock", {
+            required: "Stock is required",
             valueAsNumber: true,
-            min: { value: 200, message: 'must be greater then 200' },
+            min: { value: 200, message: "must be greater then 200" },
           })}
         />
       </label>
@@ -158,27 +160,31 @@ const ProductForm: React.FC<ProductFormProps> = ({
         Description
         <textarea
           rows={3}
-          {...register('description', {
-            required: 'Description is required',
+          {...register("description", {
+            required: "Description is required",
             minLength: {
               value: 5,
-              message: 'At least 5 characters are required',
+              message: "At least 5 characters are required",
             },
           })}
         />
       </label>
-      {errors.description && <IonText color="danger">{errors.description.message}</IonText>}
+      {errors.description && (
+        <IonText color="danger">{errors.description.message}</IonText>
+      )}
 
       <label className="form-label">
         Manufacture date
         <input
           type="date"
-          {...register('manufacturedAt', {
+          {...register("manufacturedAt", {
             validate: manufactureDateValidator,
           })}
         />
       </label>
-      {errors.manufacturedAt && <IonText color="danger">{errors.manufacturedAt.message}</IonText>}
+      {errors.manufacturedAt && (
+        <IonText color="danger">{errors.manufacturedAt.message}</IonText>
+      )}
 
       {requiresWarranty && (
         <>
@@ -189,7 +195,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
               min={4}
               max={11}
               step={1}
-              {...register('warrantyMonths', {
+              {...register("warrantyMonths", {
                 valueAsNumber: true,
                 validate: createWarrantyTermValidator(
                   warrantyValidationService,
@@ -198,7 +204,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
               })}
             />
           </label>
-          {errors.warrantyMonths && <IonText color="danger">{errors.warrantyMonths.message}</IonText>}
+          {errors.warrantyMonths && (
+            <IonText color="danger">{errors.warrantyMonths.message}</IonText>
+          )}
         </>
       )}
 
@@ -208,7 +216,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           type="button"
           size="small"
           fill="outline"
-          onClick={() => append({ value: '' })}
+          onClick={() => append({ value: "" })}
         >
           Add field
         </IonButton>
@@ -219,7 +227,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
             type="text"
             placeholder="Feature"
             {...register(`highlights.${index}.value`, {
-              maxLength: { value: 40, message: 'Maximum 40 characters' },
+              maxLength: { value: 40, message: "Maximum 40 characters" },
             })}
           />
           <IonButton
@@ -237,13 +245,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
       <div className="form-actions">
         {onCancel && (
-          <IonButton type="button" fill="outline" color="medium" onClick={onCancel}>
+          <IonButton
+            type="button"
+            fill="outline"
+            color="medium"
+            onClick={onCancel}
+          >
             Cancel
           </IonButton>
         )}
-        <IonButton type="submit" disabled={!isValid}>
-          {submitLabel}
-        </IonButton>
+        <IonButton type="submit">{submitLabel}</IonButton>
       </div>
     </form>
   );

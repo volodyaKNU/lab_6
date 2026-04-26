@@ -19,8 +19,8 @@ import ProductForm from './ProductForm';
 
 interface ProductsEditorComponentProps {
   items: CatalogItem[];
-  onUpdate: (item: RawCatalogItem) => void;
-  onDelete: (id: string) => void;
+  onUpdate: (item: RawCatalogItem) => Promise<void> | void;
+  onDelete: (id: string) => Promise<void> | void;
 }
 
 const ProductsEditorComponent: React.FC<ProductsEditorComponentProps> = ({
@@ -32,9 +32,9 @@ const ProductsEditorComponent: React.FC<ProductsEditorComponentProps> = ({
   const [editingProduct, setEditingProduct] = useState<CatalogItem | null>(null);
   const [error, setError] = useState<string>('');
 
-  const submitUpdate = (values: ReturnType<ProductFormFactory['createEmpty']>): void => {
+  const submitUpdate = async (values: ReturnType<ProductFormFactory['createEmpty']>): Promise<void> => {
     try {
-      onUpdate(formFactory.toRawItem(values));
+      await onUpdate(formFactory.toRawItem(values));
       setError('');
       setEditingProduct(null);
     } catch (updateError) {
@@ -77,7 +77,7 @@ const ProductsEditorComponent: React.FC<ProductsEditorComponentProps> = ({
                   size="small"
                   color="danger"
                   fill="clear"
-                  onClick={() => onDelete(item.id)}
+                  onClick={() => void onDelete(item.id)}
                 >
                   Delete
                 </IonButton>

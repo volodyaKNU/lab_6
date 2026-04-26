@@ -1,4 +1,6 @@
 ﻿import {
+  IonAccordion,
+  IonAccordionGroup,
   IonBadge,
   IonButton,
   IonButtons,
@@ -19,49 +21,45 @@
   IonText,
   IonTitle,
   IonToolbar,
-} from '@ionic/react';
-import { useEffect, useMemo, useState } from 'react';
-import AddProductComponent from '../components/AddProductComponent';
-import ProductsEditorComponent from '../components/ProductsEditorComponent';
-import { wearableExtensionItems } from '../data/wearableExtension';
-import { AccessoryAction } from '../domain/actions/AccessoryAction';
-import { LaptopAction } from '../domain/actions/LaptopAction';
-import { SmartphoneAction } from '../domain/actions/SmartphoneAction';
-import { TabletAction } from '../domain/actions/TabletAction';
-import { WearableAction } from '../domain/actions/WearableAction';
-import { NoDiscountPolicy } from '../domain/discounts/NoDiscountPolicy';
-import { ElectronicsItemFactory } from '../domain/factories/ElectronicsItemFactory';
-import { ItemFactoryRegistry } from '../domain/factories/ItemFactoryRegistry';
-import { WearableItemFactory } from '../domain/factories/WearableItemFactory';
-import type { CatalogItem } from '../domain/models/CatalogItem';
-import type { RawCatalogItem } from '../domain/models/RawCatalogItem';
-import { InMemoryCatalogRepository } from '../domain/repositories/InMemoryCatalogRepository';
-import { CatalogService } from '../domain/services/CatalogService';
-import { CategoryFilterService } from '../domain/services/CategoryFilterService';
-import { CheckoutService } from '../domain/services/CheckoutService';
-import { CloudJsonCatalogSource } from '../domain/services/CloudJsonCatalogSource';
-import { ItemActionService } from '../domain/services/ItemActionService';
-import './Home.css';
+} from "@ionic/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import AddProductComponent from "../components/AddProductComponent";
+import ProductsEditorComponent from "../components/ProductsEditorComponent";
+import { wearableExtensionItems } from "../data/wearableExtension";
+import { AccessoryAction } from "../domain/actions/AccessoryAction";
+import { LaptopAction } from "../domain/actions/LaptopAction";
+import { SmartphoneAction } from "../domain/actions/SmartphoneAction";
+import { TabletAction } from "../domain/actions/TabletAction";
+import { WearableAction } from "../domain/actions/WearableAction";
+import { NoDiscountPolicy } from "../domain/discounts/NoDiscountPolicy";
+import { ElectronicsItemFactory } from "../domain/factories/ElectronicsItemFactory";
+import { ItemFactoryRegistry } from "../domain/factories/ItemFactoryRegistry";
+import { WearableItemFactory } from "../domain/factories/WearableItemFactory";
+import type { CatalogItem } from "../domain/models/CatalogItem";
+import type { RawCatalogItem } from "../domain/models/RawCatalogItem";
+import { CategoryFilterService } from "../domain/services/CategoryFilterService";
+import { CheckoutService } from "../domain/services/CheckoutService";
+import { ItemActionService } from "../domain/services/ItemActionService";
+import { RealtimeCatalogService } from "../domain/services/RealtimeCatalogService";
+import "./Home.css";
 
 const Home: React.FC = () => {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [visibleItems, setVisibleItems] = useState<CatalogItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [wearableEnabled, setWearableEnabled] = useState<boolean>(false);
 
-  const repository = useMemo(() => new InMemoryCatalogRepository(), []);
   const factoryRegistry = useMemo(
     () => new ItemFactoryRegistry([new ElectronicsItemFactory()]),
     [],
   );
-  const source = useMemo(() => new CloudJsonCatalogSource('/cloud-electronics.json'), []);
   const catalogService = useMemo(
-    () => new CatalogService(source, repository, factoryRegistry),
-    [source, repository, factoryRegistry],
+    () => new RealtimeCatalogService(factoryRegistry),
+    [factoryRegistry],
   );
   const actionService = useMemo(
     () =>
@@ -73,41 +71,68 @@ const Home: React.FC = () => {
       ]),
     [],
   );
-  const checkoutService = useMemo(() => new CheckoutService(new NoDiscountPolicy()), []);
+  const checkoutService = useMemo(
+    () => new CheckoutService(new NoDiscountPolicy()),
+    [],
+  );
   const categoryFilterService = useMemo(() => new CategoryFilterService(), []);
 
   const total = checkoutService.calculateTotal(selectedItems);
 
-  const syncItemsFromCatalog = (): void => {
-    const catalogItems = catalogService.getItems();
-    setItems(catalogItems);
-    categoryFilterService.setItems(catalogItems);
-  };
+  const syncItemsFromCatalog = useCallback(
+    (catalogItems: CatalogItem[]): void => {
+      setItems(catalogItems);
+      categoryFilterService.setItems(catalogItems);
+    },
+    [categoryFilterService],
+  );
 
-  const loadCatalog = async (): Promise<void> => {
+  const loadCatalog = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
-      setError('');
-      await catalogService.loadCatalog();
-      syncItemsFromCatalog();
+      setError("");
+      const catalogItems = await catalogService.loadCatalog();
+      syncItemsFromCatalog(catalogItems);
     } catch (catalogError) {
-      const message = catalogError instanceof Error ? catalogError.message : 'Unknown loading error';
+      const message =
+        catalogError instanceof Error
+          ? catalogError.message
+          : "Unknown loading error";
       setError(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [catalogService, syncItemsFromCatalog]);
 
   useEffect(() => {
-    void loadCatalog();
-  }, []);
+    setLoading(true);
+    setError("");
+
+    const unsubscribe = catalogService.watchCatalog(
+      (catalogItems) => {
+        syncItemsFromCatalog(catalogItems);
+        setLoading(false);
+      },
+      (watchError) => {
+        setError(watchError.message);
+        setLoading(false);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [catalogService, syncItemsFromCatalog]);
 
   useEffect(() => {
-    const categoriesSubscription = categoryFilterService.categories$.subscribe(setCategories);
-    const selectedCategorySubscription = categoryFilterService.selectedCategory$.subscribe((category) => {
-      setSelectedCategory(category ?? '');
-    });
-    const visibleItemsSubscription = categoryFilterService.visibleItems$.subscribe(setVisibleItems);
+    const categoriesSubscription =
+      categoryFilterService.categories$.subscribe(setCategories);
+    const selectedCategorySubscription =
+      categoryFilterService.selectedCategory$.subscribe((category) => {
+        setSelectedCategory(category ?? "");
+      });
+    const visibleItemsSubscription =
+      categoryFilterService.visibleItems$.subscribe(setVisibleItems);
 
     return () => {
       categoriesSubscription.unsubscribe();
@@ -116,7 +141,7 @@ const Home: React.FC = () => {
     };
   }, [categoryFilterService]);
 
-  const addToSelection = (item: CatalogItem): void => {
+  const addToSelection = async (item: CatalogItem): Promise<void> => {
     if (item.stock <= 0) {
       return;
     }
@@ -126,55 +151,104 @@ const Home: React.FC = () => {
       stock: Math.max(item.stock - 1, 0),
     };
 
-    catalogService.updateItem(updatedItem);
-    syncItemsFromCatalog();
-    setSelectedItems((current) => [...current, item]);
-  };
-
-  const handleAddProduct = (rawItem: RawCatalogItem): void => {
-    if (rawItem.category === 'wearables' && !wearableEnabled) {
-      catalogService.registerFactory(new WearableItemFactory());
-      actionService.registerAction(new WearableAction());
-      setWearableEnabled(true);
+    try {
+      await catalogService.updateItem(updatedItem);
+      setSelectedItems((current) => [...current, item]);
+      setError("");
+    } catch (updateError) {
+      const message =
+        updateError instanceof Error
+          ? updateError.message
+          : "Unable to update stock";
+      setError(message);
     }
-
-    const createdItem = catalogService.addItem(rawItem);
-    syncItemsFromCatalog();
-    setSelectedItems((current) =>
-      current.map((item) => (item.id === createdItem.id ? createdItem : item)),
-    );
   };
 
-  const handleUpdateProduct = (rawItem: RawCatalogItem): void => {
-    if (rawItem.category === 'wearables' && !wearableEnabled) {
-      catalogService.registerFactory(new WearableItemFactory());
-      actionService.registerAction(new WearableAction());
-      setWearableEnabled(true);
+  const handleAddProduct = async (rawItem: RawCatalogItem): Promise<void> => {
+    try {
+      if (rawItem.category === "wearables" && !wearableEnabled) {
+        catalogService.registerFactory(new WearableItemFactory());
+        actionService.registerAction(new WearableAction());
+        setWearableEnabled(true);
+      }
+
+      const createdItem = await catalogService.addItem(rawItem);
+      setSelectedItems((current) =>
+        current.map((item) =>
+          item.id === createdItem.id ? createdItem : item,
+        ),
+      );
+      setError("");
+    } catch (createError) {
+      const message =
+        createError instanceof Error
+          ? createError.message
+          : "Unable to add item";
+      setError(message);
+      throw createError;
     }
-
-    const updatedItem = catalogService.addItem(rawItem);
-    syncItemsFromCatalog();
-    setSelectedItems((current) =>
-      current.map((item) => (item.id === updatedItem.id ? updatedItem : item)),
-    );
   };
 
-  const handleDeleteProduct = (id: string): void => {
-    catalogService.removeItem(id);
-    syncItemsFromCatalog();
-    setSelectedItems((current) => current.filter((item) => item.id !== id));
+  const handleUpdateProduct = async (
+    rawItem: RawCatalogItem,
+  ): Promise<void> => {
+    try {
+      if (rawItem.category === "wearables" && !wearableEnabled) {
+        catalogService.registerFactory(new WearableItemFactory());
+        actionService.registerAction(new WearableAction());
+        setWearableEnabled(true);
+      }
+
+      const updatedItem = await catalogService.addItem(rawItem);
+      setSelectedItems((current) =>
+        current.map((item) =>
+          item.id === updatedItem.id ? updatedItem : item,
+        ),
+      );
+      setError("");
+    } catch (updateError) {
+      const message =
+        updateError instanceof Error
+          ? updateError.message
+          : "Unable to update item";
+      setError(message);
+      throw updateError;
+    }
   };
 
-  const enableWearableExtension = (): void => {
+  const handleDeleteProduct = async (id: string): Promise<void> => {
+    try {
+      await catalogService.removeItem(id);
+      setSelectedItems((current) => current.filter((item) => item.id !== id));
+      setError("");
+    } catch (deleteError) {
+      const message =
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Unable to delete item";
+      setError(message);
+      throw deleteError;
+    }
+  };
+
+  const enableWearableExtension = async (): Promise<void> => {
     if (wearableEnabled) {
       return;
     }
 
-    catalogService.registerFactory(new WearableItemFactory());
-    actionService.registerAction(new WearableAction());
-    catalogService.addItems(wearableExtensionItems);
-    syncItemsFromCatalog();
-    setWearableEnabled(true);
+    try {
+      catalogService.registerFactory(new WearableItemFactory());
+      actionService.registerAction(new WearableAction());
+      await catalogService.addItems(wearableExtensionItems);
+      setWearableEnabled(true);
+      setError("");
+    } catch (extensionError) {
+      const message =
+        extensionError instanceof Error
+          ? extensionError.message
+          : "Unable to enable extension";
+      setError(message);
+    }
   };
 
   return (
@@ -193,26 +267,27 @@ const Home: React.FC = () => {
             <IonCardHeader>
               <IonCardTitle>Electronics Store</IonCardTitle>
               <IonCardSubtitle>
-                RxJS BehaviorSubject filtering + dynamic forms + add/edit/delete products
+                RxJS BehaviorSubject filtering + dynamic forms + add/edit/delete
+                products
               </IonCardSubtitle>
             </IonCardHeader>
             <IonCardContent>
               <IonText>
-                The app now tracks active category through RxJS and displays items
-                from one selected category only.
+                The app now tracks active category through RxJS and displays
+                items from one selected category only.
               </IonText>
             </IonCardContent>
           </IonCard>
 
           <IonButton
             expand="block"
-            onClick={enableWearableExtension}
+            onClick={() => void enableWearableExtension()}
             disabled={wearableEnabled}
-            color={wearableEnabled ? 'success' : 'primary'}
+            color={wearableEnabled ? "success" : "primary"}
           >
             {wearableEnabled
-              ? 'Wearables extension is enabled'
-              : 'Enable Wearables category (OCP extension)'}
+              ? "Wearables extension is enabled"
+              : "Enable Wearables category (OCP extension)"}
           </IonButton>
 
           <AddProductComponent onAdd={handleAddProduct} />
@@ -235,7 +310,9 @@ const Home: React.FC = () => {
               <IonSegment
                 value={selectedCategory}
                 onIonChange={(event) =>
-                  categoryFilterService.setCategory(String(event.detail.value ?? ''))
+                  categoryFilterService.setCategory(
+                    String(event.detail.value ?? ""),
+                  )
                 }
               >
                 {categories.map((category) => (
@@ -244,7 +321,9 @@ const Home: React.FC = () => {
                   </IonSegmentButton>
                 ))}
               </IonSegment>
-              {categories.length === 0 && <IonText>No categories are available.</IonText>}
+              {categories.length === 0 && (
+                <IonText>No categories are available.</IonText>
+              )}
 
               <IonList className="catalog-list">
                 {visibleItems.map((item) => (
@@ -255,11 +334,13 @@ const Home: React.FC = () => {
                       <p>{actionService.getActionMessage(item)}</p>
                       <div className="meta-row">
                         <IonBadge color="medium">{item.category}</IonBadge>
-                        <IonBadge color={item.stock > 0 ? 'success' : 'danger'}>
+                        <IonBadge color={item.stock > 0 ? "success" : "danger"}>
                           In stock: {item.stock}
                         </IonBadge>
                         {item.metadata?.manufacturedAt && (
-                          <IonBadge color="tertiary">Date: {item.metadata.manufacturedAt}</IonBadge>
+                          <IonBadge color="tertiary">
+                            Date: {item.metadata.manufacturedAt}
+                          </IonBadge>
                         )}
                         {item.metadata?.warrantyMonths && (
                           <IonBadge color="warning">
@@ -267,17 +348,34 @@ const Home: React.FC = () => {
                           </IonBadge>
                         )}
                       </div>
-                      {item.metadata?.highlights && item.metadata.highlights.length > 0 && (
-                        <p>Highlights: {item.metadata.highlights.join(', ')}</p>
-                      )}
+                      {item.metadata?.highlights &&
+                        item.metadata.highlights.length > 0 && (
+                          <p>
+                            Highlights: {item.metadata.highlights.join(", ")}
+                          </p>
+                        )}
                     </IonLabel>
                     <IonButton
                       slot="end"
-                      onClick={() => addToSelection(item)}
+                      onClick={() => void addToSelection(item)}
                       disabled={item.stock <= 0}
                     >
-                      {item.stock > 0 ? '+ Add to cart' : 'Out of stock'}
+                      {item.stock > 0 ? "+ Add to cart" : "Out of stock"}
                     </IonButton>
+                    {item.metadata?.highlights?.length && (
+                      <IonAccordionGroup>
+                        <IonAccordion value={`metadata${item.id}`}>
+                          <IonItem slot="header" color="light">
+                            <IonLabel>Highlights</IonLabel>
+                          </IonItem>
+                          <div className="ion-padding" slot="content">
+                            {item.metadata?.highlights?.map((el) => (
+                              <span>{el} &nbsp;</span>
+                            ))}
+                          </div>
+                        </IonAccordion>
+                      </IonAccordionGroup>
+                    )}
                   </IonItem>
                 ))}
               </IonList>
@@ -293,7 +391,9 @@ const Home: React.FC = () => {
               <IonCardSubtitle>Items: {selectedItems.length}</IonCardSubtitle>
             </IonCardHeader>
             <IonCardContent>
-              {selectedItems.length === 0 && <IonText>The list is empty.</IonText>}
+              {selectedItems.length === 0 && (
+                <IonText>The list is empty.</IonText>
+              )}
               {selectedItems.length > 0 && (
                 <IonList>
                   {selectedItems.map((item, index) => (
