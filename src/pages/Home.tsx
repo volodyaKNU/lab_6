@@ -10,17 +10,22 @@
   IonCardSubtitle,
   IonCardTitle,
   IonContent,
+  IonCol,
+  IonGrid,
   IonHeader,
+  IonInput,
   IonItem,
   IonLabel,
   IonList,
   IonPage,
+  IonRow,
   IonSegment,
   IonSegmentButton,
   IonSpinner,
   IonText,
   IonTitle,
   IonToolbar,
+  IonAlert,
 } from "@ionic/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AddProductComponent from "../components/AddProductComponent";
@@ -37,11 +42,24 @@ import { ItemFactoryRegistry } from "../domain/factories/ItemFactoryRegistry";
 import { WearableItemFactory } from "../domain/factories/WearableItemFactory";
 import type { CatalogItem } from "../domain/models/CatalogItem";
 import type { RawCatalogItem } from "../domain/models/RawCatalogItem";
+import {
+  PriceRangePipe,
+  type PriceRange,
+} from "../domain/pipes/PriceRangePipe";
 import { CategoryFilterService } from "../domain/services/CategoryFilterService";
 import { CheckoutService } from "../domain/services/CheckoutService";
 import { ItemActionService } from "../domain/services/ItemActionService";
+import { ProductComparisonService } from "../domain/services/ProductComparisonService";
 import { RealtimeCatalogService } from "../domain/services/RealtimeCatalogService";
 import "./Home.css";
+
+const parsePriceBound = (value: string): number | null => {
+  const parsedValue = Number(value);
+
+  return value.trim().length > 0 && Number.isFinite(parsedValue)
+    ? parsedValue
+    : null;
+};
 
 const Home: React.FC = () => {
   const [items, setItems] = useState<CatalogItem[]>([]);
@@ -49,9 +67,12 @@ const Home: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [visibleItems, setVisibleItems] = useState<CatalogItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<CatalogItem[]>([]);
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [maxPrice, setMaxPrice] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [wearableEnabled, setWearableEnabled] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const factoryRegistry = useMemo(
     () => new ItemFactoryRegistry([new ElectronicsItemFactory()]),
@@ -76,8 +97,44 @@ const Home: React.FC = () => {
     [],
   );
   const categoryFilterService = useMemo(() => new CategoryFilterService(), []);
+  const priceRangePipe = useMemo(() => new PriceRangePipe(), []);
+  const productComparisonService = useMemo(
+    () => new ProductComparisonService(),
+    [],
+  );
 
   const total = checkoutService.calculateTotal(selectedItems);
+  const priceRange = useMemo<PriceRange>(
+    () => ({
+      min: parsePriceBound(minPrice),
+      max: parsePriceBound(maxPrice),
+    }),
+    [maxPrice, minPrice],
+  );
+  const priceFilteredItems = useMemo(
+    () => priceRangePipe.transform(visibleItems, priceRange),
+    [priceRange, priceRangePipe, visibleItems],
+  );
+  const comparisonItems = useMemo(() => {
+    const selectedIds = new Set<string>();
+
+    return selectedItems.reduce<CatalogItem[]>((uniqueItems, selectedItem) => {
+      if (selectedIds.has(selectedItem.id)) {
+        return uniqueItems;
+      }
+
+      selectedIds.add(selectedItem.id);
+      uniqueItems.push(
+        items.find((catalogItem) => catalogItem.id === selectedItem.id) ??
+          selectedItem,
+      );
+      return uniqueItems;
+    }, []);
+  }, [items, selectedItems]);
+  const comparisonTable = useMemo(
+    () => productComparisonService.createComparison(comparisonItems),
+    [comparisonItems, productComparisonService],
+  );
 
   const syncItemsFromCatalog = useCallback(
     (catalogItems: CatalogItem[]): void => {
@@ -146,6 +203,15 @@ const Home: React.FC = () => {
       return;
     }
 
+    const isNewComparisonItem = !comparisonTable.items.some(
+      (comparisonItem) => comparisonItem.id === item.id,
+    );
+
+    if (isNewComparisonItem && comparisonTable.items.length >= 4) {
+      setIsOpen(true);
+      return;
+    }
+
     const updatedItem = {
       ...item,
       stock: Math.max(item.stock - 1, 0),
@@ -160,6 +226,35 @@ const Home: React.FC = () => {
         updateError instanceof Error
           ? updateError.message
           : "Unable to update stock";
+      setError(message);
+    }
+  };
+
+  const removeFromSelection = async (
+    item: CatalogItem,
+    index: number,
+  ): Promise<void> => {
+    try {
+      const catalogItem = items.find(
+        (currentItem) => currentItem.id === item.id,
+      );
+
+      if (catalogItem) {
+        await catalogService.updateItem({
+          ...catalogItem,
+          stock: catalogItem.stock + 1,
+        });
+      }
+
+      setSelectedItems((current) =>
+        current.filter((_, itemIndex) => itemIndex !== index),
+      );
+      setError("");
+    } catch (removeError) {
+      const message =
+        removeError instanceof Error
+          ? removeError.message
+          : "Unable to remove item from selection";
       setError(message);
     }
   };
@@ -255,7 +350,7 @@ const Home: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Lab 8: RxJS Category Filtering</IonTitle>
+          <IonTitle>Lab 10: React PriceRangePipe</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={() => void loadCatalog()}>Reload</IonButton>
           </IonButtons>
@@ -267,14 +362,14 @@ const Home: React.FC = () => {
             <IonCardHeader>
               <IonCardTitle>Electronics Store</IonCardTitle>
               <IonCardSubtitle>
-                RxJS BehaviorSubject filtering + dynamic forms + add/edit/delete
-                products
+                Firebase catalog + category grouping + React pipe-style price
+                filtering
               </IonCardSubtitle>
             </IonCardHeader>
             <IonCardContent>
               <IonText>
-                The app now tracks active category through RxJS and displays
-                items from one selected category only.
+                Variant 3: compare selected electronics and filter products by
+                price range.
               </IonText>
             </IonCardContent>
           </IonCard>
@@ -325,8 +420,54 @@ const Home: React.FC = () => {
                 <IonText>No categories are available.</IonText>
               )}
 
+              <IonCard className="range-filter-card">
+                <IonCardHeader>
+                  <IonCardTitle>PriceRangePipe</IonCardTitle>
+                  <IonCardSubtitle>
+                    Filters products in the selected category by price.
+                  </IonCardSubtitle>
+                </IonCardHeader>
+                <IonCardContent>
+                  <div className="price-filter-controls">
+                    <IonInput
+                      label="Min price, UAH"
+                      labelPlacement="stacked"
+                      type="number"
+                      min="0"
+                      value={minPrice}
+                      onIonInput={(event) =>
+                        setMinPrice(String(event.detail.value ?? ""))
+                      }
+                    />
+                    <IonInput
+                      label="Max price, UAH"
+                      labelPlacement="stacked"
+                      type="number"
+                      min="0"
+                      value={maxPrice}
+                      onIonInput={(event) =>
+                        setMaxPrice(String(event.detail.value ?? ""))
+                      }
+                    />
+                    <IonButton
+                      fill="clear"
+                      onClick={() => {
+                        setMinPrice("");
+                        setMaxPrice("");
+                      }}
+                    >
+                      Clear
+                    </IonButton>
+                  </div>
+                  <IonText>
+                    Showing {priceFilteredItems.length} of {visibleItems.length}{" "}
+                    products.
+                  </IonText>
+                </IonCardContent>
+              </IonCard>
+
               <IonList className="catalog-list">
-                {visibleItems.map((item) => (
+                {priceFilteredItems.map((item) => (
                   <IonItem key={item.id}>
                     <IonLabel className="ion-text-wrap">
                       <h2>{item.name}</h2>
@@ -379,8 +520,10 @@ const Home: React.FC = () => {
                   </IonItem>
                 ))}
               </IonList>
-              {visibleItems.length === 0 && categories.length > 0 && (
-                <IonText>No products found in selected category.</IonText>
+              {priceFilteredItems.length === 0 && categories.length > 0 && (
+                <IonText>
+                  No products found in selected category and price range.
+                </IonText>
               )}
             </>
           )}
@@ -403,15 +546,64 @@ const Home: React.FC = () => {
                         <p>{item.category}</p>
                       </IonLabel>
                       <IonBadge color="primary">{item.price} UAH</IonBadge>
+                      <IonButton
+                        slot="end"
+                        size="small"
+                        fill="clear"
+                        color="danger"
+                        onClick={() => void removeFromSelection(item, index)}
+                      >
+                        Remove
+                      </IonButton>
                     </IonItem>
                   ))}
                 </IonList>
               )}
               <h3>Total: {total} UAH</h3>
+              {comparisonTable.items.length < 2 && (
+                <IonText>
+                  Select at least two different products to compare
+                  characteristics.
+                </IonText>
+              )}
+              {comparisonTable.items.length >= 2 &&
+                comparisonTable.items.length <= 4 && (
+                  <div className="comparison-block">
+                    <h3>Product comparison</h3>
+                    <IonGrid className="comparison-grid">
+                      <IonRow className="comparison-head">
+                        <IonCol>Feature</IonCol>
+                        {comparisonTable.items.map((item) => (
+                          <IonCol key={item.id}>{item.name}</IonCol>
+                        ))}
+                      </IonRow>
+                      {comparisonTable.rows.map((row) => (
+                        <IonRow key={row.label}>
+                          <IonCol className="comparison-label">
+                            {row.label}
+                          </IonCol>
+                          {row.values.map((value, index) => (
+                            <IonCol
+                              key={`${row.label}-${comparisonTable.items[index].id}`}
+                            >
+                              {value}
+                            </IonCol>
+                          ))}
+                        </IonRow>
+                      ))}
+                    </IonGrid>
+                  </div>
+                )}
             </IonCardContent>
           </IonCard>
         </div>
       </IonContent>
+      <IonAlert
+        isOpen={isOpen}
+        header="To much items in table"
+        buttons={["Action"]}
+        onDidDismiss={() => setIsOpen(false)}
+      ></IonAlert>
     </IonPage>
   );
 };
