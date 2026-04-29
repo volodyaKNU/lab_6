@@ -10,8 +10,20 @@
   overflow: hidden;
 }
 
+.range-filter-card {
+  margin-inline: 0;
+}
+
+.price-filter-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr)) auto;
+  align-items: end;
+  gap: 10px;
+}
+
 .meta-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
 }
@@ -70,4 +82,40 @@
   padding: 16px;
   overflow: auto;
   height: 100%;
+}
+
+.comparison-block {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.comparison-grid {
+  min-width: 640px;
+  border: 1px solid var(--ion-color-step-150, #d9d9d9);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.comparison-grid ion-row {
+  border-bottom: 1px solid var(--ion-color-step-150, #d9d9d9);
+}
+
+.comparison-grid ion-row:last-child {
+  border-bottom: 0;
+}
+
+.comparison-grid ion-col {
+  min-width: 140px;
+  padding: 10px;
+}
+
+.comparison-head,
+.comparison-label {
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .price-filter-controls {
+    grid-template-columns: 1fr;
+  }
 }

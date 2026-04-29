@@ -32,3 +32,5 @@ adminSDK_cred.json
 
 # Optional eslint cache
 .eslintcache
+temp_auto_push.bat
+temp_interactive_push.bat
